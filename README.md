@@ -105,11 +105,16 @@ datasource:
 
 ## Como Executar
 
+### Pré-requisitos
+
+- Java 17 (JDK)
+- Docker e Docker Compose (opcional, para execução via contêiner)
+
 ### Com Docker (recomendado)
 
 ```bash
-git clone https://github.com/odavid062/webservice.git
-cd webservice
+git clone https://github.com/odavid062/api-gestao-pedidos.git
+cd api-gestao-pedidos
 docker compose up --build
 ```
 
@@ -121,12 +126,54 @@ docker compose up --build
 
 ### Com Maven
 
+No Linux/macOS:
 ```bash
 cd demo
 ./mvnw spring-boot:run
 ```
 
+No Windows:
+```cmd
+cd demo
+mvnw.cmd spring-boot:run
+```
+
 > Configure as variáveis de ambiente `DATABASE_JDBC_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` ou use os valores padrão do `application.yaml`.
+
+### Testes
+
+Para rodar a suíte de testes com o Maven Wrapper:
+
+No Linux/macOS:
+```bash
+cd demo
+./mvnw test
+```
+
+No Windows:
+```cmd
+cd demo
+mvnw.cmd test
+```
+
+---
+
+## Variáveis de Ambiente
+
+As configurações de conexão e runtime podem ser definidas via variáveis de ambiente no `.env` (usado pelo Docker Compose) ou passadas diretamente para a aplicação Spring Boot:
+
+| Variável | Descrição | Onde é utilizada | Valor padrão / Fallback |
+|---|---|---|---|
+| `DB_USER` | Usuário do banco de dados PostgreSQL | Docker Compose (`db`, `api`) | `postgres` |
+| `DB_PASSWORD` | Senha do usuário do PostgreSQL | Docker Compose (`db`, `api`) | `changeme` |
+| `DB_NAME` | Nome do banco de dados PostgreSQL | Docker Compose (`db`, `api`) | `postgres` |
+| `DATABASE_JDBC_URL` | URL JDBC de conexão com o banco | Spring Boot (`application.yaml`) | `jdbc:postgresql://localhost:5433/postgres` |
+| `DATABASE_USERNAME` | Usuário de autenticação no banco | Spring Boot (`application.yaml`) | `postgres` |
+| `DATABASE_PASSWORD` | Senha de autenticação no banco | Spring Boot (`application.yaml`) | `120210` |
+| `SPRING_OUTPUT_ANSI_ENABLE` | Modo de cores ANSI no console | Spring Boot (`application.yaml`) | `always` |
+| `SPRING_BANNER_CHARSET` | Codificação de caracteres do banner | Spring Boot (`application.yaml`) | `UTF-8` |
+| `SPRING_BANNER_LOCATION` | Localização do arquivo de banner | Spring Boot (`application.yaml`) | `classpath:/banner.txt` |
+| `SPRING_DRIVER_CLASS_NAME` | Classe do driver JDBC PostgreSQL | Spring Boot (`application.yaml`) | `org.postgresql.Driver` |
 
 ---
 
@@ -152,15 +199,15 @@ cd demo
 | `PUT` | `/api/produtos/{id}` | Atualiza produto |
 | `DELETE` | `/api/produtos/{id}` | Remove produto |
 
-### Itens de Pedido — `/api/itensPedido`
+### Itens de Pedido — `/api/itens`
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/api/itensPedido` | Adiciona item |
-| `GET` | `/api/itensPedido` | Lista todos os itens |
-| `GET` | `/api/itensPedido/{id}` | Busca item por ID |
-| `PUT` | `/api/itensPedido/{id}` | Atualiza item |
-| `DELETE` | `/api/itensPedido/{id}` | Remove item |
+| `POST` | `/api/itens` | Adiciona item |
+| `GET` | `/api/itens` | Lista todos os itens |
+| `GET` | `/api/itens/{id}` | Busca item por ID |
+| `PUT` | `/api/itens/{id}` | Atualiza item |
+| `DELETE` | `/api/itens/{id}` | Remove item |
 
 ### Exemplo
 
@@ -179,33 +226,47 @@ curl http://localhost:8080/api/produtos
 ## Estrutura do Projeto
 
 ```
-demo/src/main/java/com/example/demo/
-├── interfaces/
-│   ├── IResource.java         # Contrato genérico para controllers (CRUD)
-│   └── IService.java          # Contrato genérico para services (CRUD)
-├── model/
-│   ├── PedidoModel.java       # Entidade JPA: nroPedido, datPedido
-│   ├── ProdutoModel.java      # Entidade: idProduto, desPro, qtde, valor
-│   └── ItensPedidoModel.java  # Entidade JPA: id, qtdeItem, valUnidade
-├── Dto/
-│   ├── PedidoDto.java         # DTO com lista de ItensPedidoDto
-│   ├── ProdutoDto.java
-│   └── ItensPedidoDto.java
-├── repository/
-│   ├── PedidoRepository.java
-│   ├── ProdutoRepository.java
-│   └── ItensPedidoRepository.java
-├── service/
-│   ├── PedidoService.java     # Implementa IService<PedidoDto, Integer>
-│   ├── ProdutoService.java
-│   └── ItensPedidoService.java
-├── resource/
-│   ├── PedidoResource.java    # Implementa IResource<PedidoDto, Integer>
-│   ├── ProdutoResource.java
-│   └── ItensPedidoResource.java
-└── exception/
-    ├── CustomErrorException.java
-    └── CustomHttpException.java
+.
+├── docker-compose.yml         # Orquestração dos containers (API e PostgreSQL)
+├── Dockerfile                 # Multi-stage build da aplicação Java
+├── .env.example               # Exemplo de variáveis de ambiente
+└── demo/
+    ├── pom.xml                # Configurações do Maven e dependências
+    ├── mvnw / mvnw.cmd        # Executáveis do Maven Wrapper
+    └── src/
+        ├── main/
+        │   ├── java/com/example/demo/
+        │   │   ├── interfaces/
+        │   │   │   ├── IResource.java         # Contrato genérico para controllers (CRUD)
+        │   │   │   └── IService.java          # Contrato genérico para services (CRUD)
+        │   │   ├── model/
+        │   │   │   ├── PedidoModel.java       # Entidade JPA: nroPedido, datPedido
+        │   │   │   ├── ProdutoModel.java      # Entidade: idProduto, desPro, qtdeProduto, valProduto
+        │   │   │   └── ItensPedidoModel.java  # Entidade JPA: id, qtdeItem, valUnidade
+        │   │   ├── Dto/
+        │   │   │   ├── PedidoDto.java         # DTO com lista de ItensPedidoDto
+        │   │   │   ├── ProdutoDto.java
+        │   │   │   └── ItensPedidoDto.java
+        │   │   ├── repository/
+        │   │   │   ├── PedidoRepository.java
+        │   │   │   ├── ProdutoRepository.java
+        │   │   │   └── ItensPedidoRepository.java
+        │   │   ├── service/
+        │   │   │   ├── PedidoService.java     # Implementa IService<PedidoDto, Integer>
+        │   │   │   ├── ProdutoService.java
+        │   │   │   └── ItensPedidoService.java
+        │   │   ├── resource/
+        │   │   │   ├── PedidoResource.java    # Implementa IResource<PedidoDto, Integer>
+        │   │   │   ├── ProdutoResource.java
+        │   │   │   └── ItensPedidoResource.java
+        │   │   └── exception/
+        │   │       ├── CustomErrorException.java
+        │   │       └── CustomHttpException.java
+        │   └── resources/
+        │       └── application.yaml   # Configurações do Spring Boot e datasource
+        └── test/
+            └── java/com/example/demo/
+                └── DemoApplicationTests.java  # Testes de contexto da aplicação
 ```
 
 ---
